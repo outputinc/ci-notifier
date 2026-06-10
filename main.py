@@ -181,9 +181,12 @@ def poll():
     icon = ':white_check_mark:' if overall == 'success' else ':x:'
     repo = project_slug.split('/')[-1]
 
+    pipeline_url = f"https://app.circleci.com/pipelines/{project_slug}/{pipeline_number}"
+
     lines = [f"{icon} *{repo}* pipeline #{pipeline_number} on `{branch}` — *{overall}*"]
     if failed:
         lines.append('Failed workflows: ' + ', '.join(f"`{w['name']}`" for w in failed))
+    lines.append(f"<{pipeline_url}|View your build>")
 
     slack_dm(user_id, '\n'.join(lines))
     return 'ok', 200
