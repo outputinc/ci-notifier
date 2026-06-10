@@ -134,7 +134,7 @@ def slash():
     repo = project_slug.split('/')[-1]
     return jsonify({
         'response_type': 'ephemeral',
-        'text': f"Got it — I'll DM you when *{repo}* @ `{branch}` completes. :circleci:",
+        'text': f"Got it — I'll DM you when *{repo}* @ `{branch}` completes. :circle-ci:",
     })
 
 
