@@ -1,0 +1,25 @@
+#!/bin/bash
+# Copy this to deploy.sh, fill in the values, then run: bash deploy.sh
+
+SLACK_BOT_TOKEN=""        # xoxb-...
+SLACK_SIGNING_SECRET=""   # from Slack app > Basic Information > App Credentials
+INTERNAL_TOKEN=""         # generate with: openssl rand -hex 32
+
+# --- Do not edit below this line ---
+CIRCLECI_TOKEN=""
+GCP_PROJECT=""
+GCP_LOCATION="us-central1"
+TASKS_QUEUE="ci-pipeline-poller"
+ORG_PREFIX="github/outputinc"
+
+if [[ -z "$SLACK_BOT_TOKEN" || -z "$SLACK_SIGNING_SECRET" || -z "$INTERNAL_TOKEN" ]]; then
+  echo "Error: fill in SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, and INTERNAL_TOKEN first"
+  exit 1
+fi
+
+gcloud run deploy ci-notifier \
+  --source . \
+  --region "$GCP_LOCATION" \
+  --project "$GCP_PROJECT" \
+  --allow-unauthenticated \
+  --set-env-vars "CIRCLECI_TOKEN=${CIRCLECI_TOKEN},SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN},SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET},INTERNAL_TOKEN=${INTERNAL_TOKEN},GCP_PROJECT=${GCP_PROJECT},GCP_LOCATION=${GCP_LOCATION},TASKS_QUEUE=${TASKS_QUEUE},SERVICE_URL=placeholder,ORG_PREFIX=${ORG_PREFIX}"

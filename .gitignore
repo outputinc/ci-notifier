@@ -1,0 +1,5 @@
+deploy.sh
+set-service-url.sh
+__pycache__/
+*.pyc
+.env
