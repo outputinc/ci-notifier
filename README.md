@@ -4,7 +4,7 @@ A Slack slash command that sends you a personal DM when a CircleCI pipeline on a
 
 ```
 /ci-notify Hydra main
-/ci-notify opmV2 my-feature-branch
+/ci-notify Atlas my-feature-branch
 ```
 
 You get an immediate confirmation in Slack, then a DM when the pipeline finishes — pass, fail, or cancel.
