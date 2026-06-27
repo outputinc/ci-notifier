@@ -198,7 +198,7 @@ def poll():
     # All done — notify
     failed = [w for w in workflows if w['status'] != 'success']
     overall = 'failed' if failed else 'success'
-    icon = ':white_check_mark:' if overall == 'success' else ':x:'
+    icon = '🟢' if overall == 'success' else '🔴'
     repo = project_slug.split('/')[-1]
 
     pipeline_url = f"https://app.circleci.com/pipelines/{project_slug}/{pipeline_number}"
@@ -215,7 +215,7 @@ def poll():
         if failed:
             push_lines.append('Failed workflows: ' + ', '.join(w['name'] for w in failed))
         pushover_notify(
-            title=f"{repo} — {overall}",
+            title=f"{icon} {repo} — {overall}",
             message='\n'.join(push_lines),
             url=pipeline_url,
         )
