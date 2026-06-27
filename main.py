@@ -25,6 +25,11 @@ SERVICE_URL         = os.environ['SERVICE_URL']
 ORG_PREFIX          = os.environ.get('ORG_PREFIX', 'github/outputinc')
 POLL_INTERVAL       = int(os.environ.get('POLL_INTERVAL_SECONDS', '30'))
 
+# Optional — Pushover notifications for a specific Slack user
+PUSHOVER_TOKEN        = os.environ.get('PUSHOVER_TOKEN')
+PUSHOVER_USER         = os.environ.get('PUSHOVER_USER')
+PUSHOVER_SLACK_USER_ID = os.environ.get('PUSHOVER_SLACK_USER_ID')
+
 TERMINAL_STATES = {'success', 'failed', 'error', 'canceled', 'unauthorized'}
 
 
@@ -67,6 +72,21 @@ def slack_dm(user_id, text):
         'https://slack.com/api/chat.postMessage',
         headers={'Authorization': f'Bearer {SLACK_BOT_TOKEN}'},
         json={'channel': channel_id, 'text': text},
+        timeout=10,
+    ).raise_for_status()
+
+
+def pushover_notify(title, message, url):
+    requests.post(
+        'https://api.pushover.net/1/messages.json',
+        data={
+            'token': PUSHOVER_TOKEN,
+            'user': PUSHOVER_USER,
+            'title': title,
+            'message': message,
+            'url': url,
+            'url_title': 'View your build',
+        },
         timeout=10,
     ).raise_for_status()
 
@@ -178,7 +198,7 @@ def poll():
     # All done — notify
     failed = [w for w in workflows if w['status'] != 'success']
     overall = 'failed' if failed else 'success'
-    icon = ':white_check_mark:' if overall == 'success' else ':x:'
+    icon = '🟢' if overall == 'success' else '🔴'
     repo = project_slug.split('/')[-1]
 
     pipeline_url = f"https://app.circleci.com/pipelines/{project_slug}/{pipeline_number}"
@@ -189,6 +209,17 @@ def poll():
     lines.append(f"<{pipeline_url}|View your build>")
 
     slack_dm(user_id, '\n'.join(lines))
+
+    if PUSHOVER_TOKEN and PUSHOVER_USER and user_id == PUSHOVER_SLACK_USER_ID:
+        push_lines = [f"Pipeline #{pipeline_number} on {branch}"]
+        if failed:
+            push_lines.append('Failed workflows: ' + ', '.join(w['name'] for w in failed))
+        pushover_notify(
+            title=f"{icon} {repo} — {overall}",
+            message='\n'.join(push_lines),
+            url=pipeline_url,
+        )
+
     return 'ok', 200
 
 
