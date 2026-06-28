@@ -171,25 +171,44 @@ def poll():
     pipeline_number = payload.get('pipeline_number')
     triggered_after = payload.get('triggered_after', 0)
 
-    # Resolve pipeline — only consider pipelines created after the slash command
+    # Resolve pipeline
     if not pipeline_id:
         encoded = urllib.parse.quote(branch, safe='')
         data = ci_get(f'project/{project_slug}/pipeline?branch={encoded}')
-        items = [
-            i for i in data.get('items', [])
-            if _parse_iso(i.get('created_at', '')) >= triggered_after
-        ]
+        all_items = data.get('items', [])
+
+        # Prefer pipelines created after the slash command was run
+        items = [i for i in all_items if _parse_iso(i.get('created_at', '')) >= triggered_after]
+
+        if not items and all_items:
+            # No new pipeline yet — check if the most recent one is still running.
+            # This handles the common case where the user ran the command while a
+            # pipeline was already in progress (created_at < triggered_after).
+            most_recent = all_items[0]
+            wf_data = ci_get(f'pipeline/{most_recent["id"]}/workflow')
+            wf_items = wf_data.get('items', [])
+            if wf_items and not all(w['status'] in TERMINAL_STATES for w in wf_items):
+                print(f"[poll] no post-command pipeline found; adopting in-progress pipeline "
+                      f"{most_recent['id']} for {project_slug}/{branch}")
+                items = [most_recent]
+
         if not items:
+            print(f"[poll] no active pipeline found for {project_slug}/{branch}, will retry")
             enqueue_poll(payload, delay_seconds=POLL_INTERVAL)
             return 'ok', 200
+
         pipeline_id = items[0]['id']
         pipeline_number = items[0]['number']
         payload['pipeline_id'] = pipeline_id
         payload['pipeline_number'] = pipeline_number
+        print(f"[poll] tracking pipeline {pipeline_id} (#{pipeline_number}) for {project_slug}/{branch}")
 
     # Check workflow statuses
     data = ci_get(f'pipeline/{pipeline_id}/workflow')
     workflows = data.get('items', [])
+
+    statuses = [w['status'] for w in workflows]
+    print(f"[poll] pipeline {pipeline_id} workflow statuses: {statuses}")
 
     if not workflows or not all(w['status'] in TERMINAL_STATES for w in workflows):
         enqueue_poll(payload, delay_seconds=POLL_INTERVAL)
